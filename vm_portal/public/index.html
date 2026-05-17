@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Soft-Master VM Portal</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body data-theme="light">
+    <main id="loginView" class="login-shell hidden">
+      <section class="login-card">
+        <div class="login-brand">
+          <div class="brand-mark large" aria-hidden="true"><span>VM</span></div>
+          <h1>VM Portal</h1>
+          <p>Soft-Master infrastructure reports</p>
+        </div>
+        <form id="loginForm" class="form-stack">
+          <label>
+            Логин
+            <input name="username" autocomplete="username" />
+          </label>
+          <label>
+            Пароль
+            <input name="password" type="password" autocomplete="current-password" />
+          </label>
+          <button class="btn btn-primary" type="submit">Войти</button>
+          <div id="loginError" class="inline-alert danger"></div>
+        </form>
+      </section>
+    </main>
+
+    <main id="appView" class="app-shell hidden">
+      <aside class="app-sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark small" aria-hidden="true"><span>VM</span></div>
+          <div>
+            <strong>VMaster</strong>
+            <span>VM Portal</span>
+          </div>
+          <button class="sidebar-menu" type="button" title="Menu">☰</button>
+        </div>
+
+        <nav class="sidebar-nav">
+          <button class="sidebar-nav-item active" data-view="dashboard"><span>⌂</span> Dashboard</button>
+          <button class="sidebar-nav-item" data-view="files"><span>▤</span> File Pairs</button>
+          <button class="sidebar-nav-item" data-view="logs"><span>◉</span> Logs</button>
+          <button id="adminNavBtn" class="sidebar-nav-item hidden" data-view="admin"><span>⚙</span> Administration</button>
+        </nav>
+
+        <div class="sidebar-footer">
+          <button id="themeQuickToggle" class="sidebar-link" type="button">☼ Light mode</button>
+          <div class="sidebar-user">
+            <span id="userName"></span>
+            <b id="userRole"></b>
+          </div>
+          <button class="sidebar-link" data-view="settings" type="button"># Change Settings</button>
+          <button id="logoutBtn" class="sidebar-link" type="button">⇱ Log out</button>
+          <span class="sidebar-version">v1.2.0</span>
+        </div>
+      </aside>
+
+      <section id="dashboardView" class="app-main view-pane">
+        <header class="page-header">
+          <div>
+            <h1 id="snapshotTitle">Dashboard</h1>
+            <p id="snapshotMeta">Выберите пару файлов для анализа.</p>
+          </div>
+          <div class="actions">
+            <button id="exportBtn" class="btn btn-primary" disabled>↓ Export XLSX</button>
+            <button id="topLogoutBtn" class="btn btn-secondary">Logout</button>
+          </div>
+        </header>
+
+        <main class="page-content dashboard-page">
+          <section class="metric-grid">
+            <article class="metric-card neutral"><span>All VMs</span><strong id="kpiTotal">0</strong></article>
+            <article class="metric-card warning"><span>Powered Off</span><strong id="kpiOff">0</strong></article>
+            <article class="metric-card info"><span>Off + Backup</span><strong id="kpiOffBackup">0</strong></article>
+            <article class="metric-card success"><span>Off + Replica</span><strong id="kpiOffReplica">0</strong></article>
+          </section>
+
+          <section class="data-panel vm-panel">
+            <div class="data-toolbar">
+              <div class="quick-filters">
+                <button class="filter-chip active" data-preset="all">Все</button>
+                <button class="filter-chip" data-preset="offBackup">Выключенные + Backup</button>
+                <button class="filter-chip" data-preset="offReplica">Выключенные + Replica</button>
+                <button class="filter-chip" data-preset="noProtection">Без защиты</button>
+                <button class="filter-chip" data-preset="poweredOff">PoweredOff</button>
+                <button class="filter-chip" data-preset="poweredOn">PoweredOn</button>
+              </div>
+              <input id="searchInput" class="search" placeholder="Поиск по VM, jobs, host..." />
+            </div>
+            <div class="data-table-wrap">
+              <table id="vmTable" class="data-table">
+                <thead>
+                  <tr>
+                    <th data-key="vmName">VMName</th>
+                    <th data-key="powerState">PowerState</th>
+                    <th data-key="vmHost">VMHost</th>
+                    <th data-key="hasVeeamBackup">Backup</th>
+                    <th data-key="hasVeeamReplica">Replica</th>
+                    <th data-key="hasAnyVeeamProtection">Protected</th>
+                    <th data-key="backupJobs">BackupJobs</th>
+                    <th data-key="replicaJobs">ReplicaJobs</th>
+                    <th data-key="lastBackupRestorePoint">LastBackup</th>
+                    <th data-key="lastReplicaRestorePoint">LastReplica</th>
+                    <th data-key="backupRestorePoints">Backup RPs</th>
+                    <th data-key="replicaRestorePoints">Replica RPs</th>
+                  </tr>
+                  <tr id="columnFilters" class="filter-row"></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div class="data-footer"><span id="rowCount">0 rows</span></div>
+          </section>
+        </main>
+      </section>
+
+      <section id="filesView" class="app-main view-pane hidden">
+        <header class="page-header">
+          <div>
+            <h1>File Pairs</h1>
+            <p>Загрузка, автоимпорт и выбор сохраненных пар vSphere/Veeam.</p>
+          </div>
+          <button id="refreshSnapshots" class="btn btn-secondary">Refresh</button>
+        </header>
+
+        <main class="page-content files-page">
+          <section id="uploadPanel" class="settings-card">
+            <div class="section-head">
+              <h2>Manual CSV Upload</h2>
+              <p>Доступно пользователям write и admin.</p>
+            </div>
+            <form id="uploadForm" class="upload-grid">
+              <label>
+                Название
+                <input name="title" placeholder="Например: Проверка 16.05 evening" />
+              </label>
+              <label>
+                vSphere CSV
+                <input name="vsphere" type="file" accept=".csv" required />
+              </label>
+              <label>
+                Veeam CSV
+                <input name="veeam" type="file" accept=".csv" required />
+              </label>
+              <button class="btn btn-primary" type="submit">Загрузить пару</button>
+            </form>
+            <div id="uploadStatus" class="inline-alert"></div>
+          </section>
+
+          <section id="autoImportPanel" class="settings-card">
+            <div class="section-head">
+              <h2>Automatic Import</h2>
+              <p>Локальный запуск PowerShell собирает CSV с VMware и Veeam, пароли не сохраняются.</p>
+            </div>
+            <form id="importForm" class="import-grid">
+              <label class="import-title">Название <input name="title" placeholder="Auto import" /></label>
+              <fieldset class="import-group">
+                <legend>VMware</legend>
+                <label>IP <input name="vmwareHost" value="172.20.20.106" /></label>
+                <label>Login <input name="vmwareUser" autocomplete="username" /></label>
+                <label>Password <input name="vmwarePassword" type="password" autocomplete="current-password" /></label>
+              </fieldset>
+              <fieldset class="import-group">
+                <legend>Veeam</legend>
+                <label>IP <input name="veeamHost" value="172.20.20.22" /></label>
+                <label>Login <input name="veeamUser" autocomplete="username" /></label>
+                <label>Password <input name="veeamPassword" type="password" autocomplete="current-password" /></label>
+              </fieldset>
+              <button class="btn btn-primary import-submit" type="submit">Run Import</button>
+            </form>
+            <div id="importStatus" class="inline-alert"></div>
+          </section>
+
+          <section class="data-panel">
+            <div class="data-toolbar">
+              <strong>Saved Pairs</strong>
+              <span id="snapshotCount" class="muted">0 pairs</span>
+            </div>
+            <div class="data-table-wrap">
+              <table class="data-table pairs-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Created</th>
+                    <th>vSphere</th>
+                    <th>Veeam</th>
+                    <th>Total</th>
+                    <th>Off</th>
+                    <th>Off+Backup</th>
+                    <th>Off+Replica</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="snapshotList"></tbody>
+              </table>
+            </div>
+          </section>
+        </main>
+      </section>
+
+      <section id="logsView" class="app-main view-pane hidden">
+        <header class="page-header">
+          <div>
+            <h1>Logs</h1>
+            <p>Журнал автоматического импорта и диагностические сообщения.</p>
+          </div>
+          <button id="refreshLogsBtn" class="btn btn-secondary">Refresh</button>
+        </header>
+        <main class="page-content logs-page">
+          <section class="data-panel">
+            <div class="data-toolbar">
+              <strong>Import Logs</strong>
+              <span id="logCount" class="muted">0 events</span>
+            </div>
+            <div class="data-table-wrap">
+              <table class="data-table logs-table">
+                <thead>
+                  <tr><th>Time</th><th>Status</th><th>User</th><th>Message</th><th>Details</th></tr>
+                </thead>
+                <tbody id="importLogList"></tbody>
+              </table>
+            </div>
+          </section>
+        </main>
+      </section>
+
+      <section id="settingsView" class="app-main view-pane hidden">
+        <header class="page-header">
+          <div>
+            <h1>Change Settings</h1>
+            <p>Тема интерфейса и пароль текущего пользователя.</p>
+          </div>
+        </header>
+        <main class="page-content settings-page">
+          <section class="settings-section">
+            <div class="section-head">
+              <h2>Appearance</h2>
+              <p>Переключение светлой и темной темы.</p>
+            </div>
+            <div class="settings-card">
+              <div class="segmented" id="themeToggle">
+                <button type="button" data-theme-choice="light">Light</button>
+                <button type="button" data-theme-choice="dark">Dark</button>
+              </div>
+            </div>
+          </section>
+          <section class="settings-section">
+            <div class="section-head">
+              <h2>Password</h2>
+              <p>Все пользователи могут сменить свой пароль.</p>
+            </div>
+            <form id="passwordForm" class="settings-card form-stack">
+              <label>Current Password <input name="currentPassword" type="password" autocomplete="current-password" /></label>
+              <label>New Password <input name="newPassword" type="password" autocomplete="new-password" /></label>
+              <label>Confirm New Password <input name="confirmPassword" type="password" autocomplete="new-password" /></label>
+              <button class="btn btn-primary align-right" type="submit">Change password</button>
+              <div id="passwordStatus" class="inline-alert"></div>
+            </form>
+          </section>
+        </main>
+      </section>
+
+      <section id="adminView" class="app-main view-pane hidden">
+        <header class="page-header">
+          <div>
+            <h1>Administration</h1>
+            <p>Users, permissions, fail2ban, IP blocks and login monitoring.</p>
+          </div>
+          <div class="actions">
+            <button id="refreshAdminBtn" class="btn btn-secondary">Refresh</button>
+            <button id="adminLogoutBtn" class="btn btn-secondary">Logout</button>
+          </div>
+        </header>
+
+        <main class="page-content admin-page">
+          <section class="metric-grid">
+            <article class="metric-card neutral"><span>Users</span><strong id="adminKpiUsers">0</strong></article>
+            <article class="metric-card warning"><span>Locked</span><strong id="adminKpiLocked">0</strong></article>
+            <article class="metric-card danger"><span>Blocked IPs</span><strong id="adminKpiBans">0</strong></article>
+            <article class="metric-card success"><span>Login Events</span><strong id="adminKpiEvents">0</strong></article>
+          </section>
+
+          <nav class="page-tabs">
+            <button class="page-tab active" data-admin-tab="users">Users</button>
+            <button class="page-tab" data-admin-tab="security">Fail2ban</button>
+            <button class="page-tab" data-admin-tab="bans">IP Blocks</button>
+            <button class="page-tab" data-admin-tab="monitor">Login Monitor</button>
+          </nav>
+
+          <section class="admin-panel" data-admin-page="users">
+            <div class="section-head">
+              <h2>Users</h2>
+              <p>Create accounts, assign roles, reset passwords and lock access.</p>
+            </div>
+            <form id="userForm" class="admin-form">
+              <input name="username" placeholder="Username" />
+              <input name="password" placeholder="Temporary password" type="password" />
+              <select name="role">
+                <option value="read">read</option>
+                <option value="write">write</option>
+                <option value="admin">admin</option>
+              </select>
+              <button class="btn btn-primary" type="submit">Create User</button>
+            </form>
+            <div id="adminStatus" class="inline-alert"></div>
+            <div class="data-table-wrap bordered">
+              <table class="data-table admin-table">
+                <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Created</th><th>New Password</th><th>Actions</th></tr></thead>
+                <tbody id="userList"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="admin-panel hidden" data-admin-page="security">
+            <div class="section-head">
+              <h2>Fail2ban</h2>
+              <p>Automatic temporary IP blocking after failed logins.</p>
+            </div>
+            <form id="securityForm" class="settings-grid">
+              <label class="toggle-row"><input name="fail2ban_enabled" type="checkbox" /><span>Enable fail2ban protection</span></label>
+              <label>Failed attempts before block <input name="fail2ban_max_attempts" type="number" min="1" max="100" /></label>
+              <label>Count attempts during minutes <input name="fail2ban_window_minutes" type="number" min="1" max="1440" /></label>
+              <label>Block duration minutes <input name="fail2ban_ban_minutes" type="number" min="1" max="10080" /></label>
+              <button class="btn btn-primary" type="submit">Save Security Settings</button>
+            </form>
+          </section>
+
+          <section class="admin-panel hidden" data-admin-page="bans">
+            <div class="section-head">
+              <h2>IP Blocks</h2>
+              <p>Manual blocks are permanent; fail2ban blocks expire automatically.</p>
+            </div>
+            <form id="banIpForm" class="admin-form">
+              <input name="ip" placeholder="IP address or CIDR" />
+              <input name="reason" placeholder="Reason" />
+              <button class="btn btn-danger" type="submit">Block IP</button>
+            </form>
+            <div class="data-table-wrap bordered">
+              <table class="data-table admin-table">
+                <thead><tr><th>IP</th><th>Reason</th><th>Blocked At</th><th>Expires</th><th>By</th><th>Actions</th></tr></thead>
+                <tbody id="banList"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="admin-panel hidden" data-admin-page="monitor">
+            <div class="section-head">
+              <h2>Login Monitor</h2>
+              <p>Track login attempts by IP and quickly block suspicious sources.</p>
+            </div>
+            <div class="split-admin">
+              <div class="data-table-wrap bordered">
+                <table class="data-table admin-table">
+                  <thead><tr><th>IP</th><th>Success</th><th>Failed</th><th>Last Seen</th><th>Actions</th></tr></thead>
+                  <tbody id="ipStats"></tbody>
+                </table>
+              </div>
+              <div class="data-table-wrap bordered">
+                <table class="data-table admin-table">
+                  <thead><tr><th>Time</th><th>User</th><th>IP</th><th>Result</th><th>Reason</th></tr></thead>
+                  <tbody id="authEvents"></tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </main>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

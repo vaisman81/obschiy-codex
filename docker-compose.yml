@@ -1,0 +1,50 @@
+name: common-dev-stack
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: vm_portal/Dockerfile
+    image: vm-portal-app:local
+    working_dir: /workspace
+    command: python vm_portal/server.py
+    volumes:
+      - ./:/workspace
+    ports:
+      - "${APP_PORT:-8088}:8088"
+    environment:
+      TZ: ${TZ:-Asia/Jerusalem}
+      VM_PORTAL_HOST: 0.0.0.0
+      VM_PORTAL_PORT: 8088
+    restart: unless-stopped
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+      TZ: ${TZ:-Asia/Jerusalem}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-app}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:8-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

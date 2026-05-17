@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+
+# Python cache/venv
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Local env/config secrets
+.env
+.env.*
+!.env.docker.example
+*.conf
+*.key
+*.pem
+*.p12
+*.pfx
+*secret*
+*token*
+*password*
+*cookies*
+
+# OS/IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Logs/artifacts
+*.log
+*.tmp
+*.bak
+*.zip
+*.rar
+*.7z
+*.cab
+*.msi
+*.exe
+*.dll
+*.sys
+*.cat
+*.gif
+*.pdf
+*.xlsx
+*.png
+*.jpg
+*.jpeg
+*.ico
+*.lnk
+
+# Project-generated data
+vm_portal/data/
+
+# Large archival/project dump folders
+Мелкие_проекты/
